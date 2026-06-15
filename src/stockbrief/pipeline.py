@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -48,6 +49,28 @@ def _news_terms(key, name, market, news_queries):
     return out
 
 
+_NEWS_WORD = re.compile(r"[0-9a-z가-힣]+")
+
+
+def _title_tokens(title):
+    return frozenset(_NEWS_WORD.findall((title or "").lower()))
+
+
+def _is_similar_title(tokens, seen_tokens, threshold=0.6):
+    """제목 토큰 Jaccard 유사도 ≥ threshold 면 같은 이슈로 보고 중복 처리(보수적 기본 0.6).
+
+    "엔비디아 실적 호조에 급등" vs "엔비디아 어닝 서프라이즈에 상승" 같은 사실상 동일 기사를
+    걸러 노이즈를 줄인다. 의미 기반(임베딩)이 아니라 결정적 토큰 겹침이라 키 불필요·재현 가능.
+    """
+    if not tokens:
+        return False
+    for st in seen_tokens:
+        union = len(tokens | st)
+        if union and len(tokens & st) / union >= threshold:
+            return True
+    return False
+
+
 class Advisor:
     def __init__(self, config: AdvisorConfig, holdings, quotes=None, fx=None,
                  sentiment=None, news=None, naver_news=None, flow=None):
@@ -78,13 +101,17 @@ class Advisor:
             prov = self.p_naver if (p.market == "KR" and self.p_naver and getattr(self.p_naver, "available", True)) else self.p_news
             if prov is None:
                 prov = self.p_news or self.p_naver
-            items, seen = [], set()
+            items, seen_tok = [], []
             for t in terms:
                 try:
                     for it in prov.search(t, days=days, asof=asof):
-                        if it.url and it.title not in seen:
-                            seen.add(it.title)
-                            items.append(it)
+                        if not it.url:
+                            continue
+                        tok = _title_tokens(it.title)
+                        if _is_similar_title(tok, seen_tok):   # 유사 제목(같은 이슈) 제거
+                            continue
+                        seen_tok.append(tok)
+                        items.append(it)
                 except Exception as e:  # noqa: BLE001
                     logger.warning("뉴스 검색 실패 (%s, term=%r): %s", p.key, t, e)
                     continue

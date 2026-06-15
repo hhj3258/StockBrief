@@ -134,7 +134,8 @@ thresholds: { stop_loss_pct: -10, max_position_pct: 30, target_cash_pct: 25 }
 
 브리핑 파이프라인 없이 계산식만 필요하면 직접 호출하면 됩니다.
 ```python
-from stockbrief.lib import region_regime, star_score, weights, overheat_ratio
+from stockbrief.lib import (region_regime, star_score, star_breakdown,
+                            weights, overheat_ratio, portfolio_concentration)
 from stockbrief.metrics import all_regions
 from stockbrief.benchmark import my_value, resolve_fx, excess_pct
 from stockbrief.reconcile import reconcile          # 보유 변화 → 거래 복원 + 순현금흐름
@@ -142,8 +143,12 @@ from stockbrief.retrospect import evaluate          # 회고 % 평가
 
 region_regime(27.5, "혼조", -1.2, 0.0)               # → ("공포 우위", {...})
 star_score(4, 3.5, 4.5, 3.5)                         # → 3.5
+star_breakdown(4, 3.5, 4.5, 3.5)                     # → "왜 이 점수인가" 컴포넌트별 기여도 + stars
 all_regions(tradable, quotes, cfg.regions, cnn_score=34.0, investor=flow)
+portfolio_concentration(tradable, theme_map={"AI": ["NVDA"]})  # 종목·시장·테마 비중 + 집중 경고
 ```
+- **별점 근거**: `star_breakdown(...)` → `{components: {thesis|value_trend|weight_fit|relative: {raw, weight, contribution}}, raw_total, stars}`. 최종 별점은 `star_score`와 동일하고, 어느 요소가 점수를 끌어올렸는지 노출합니다.
+- **포트폴리오 집중도**: `portfolio_concentration(...)` → 단일 종목·기반시장·테마 비중과 임계 초과 경고(`flags`). 시장 국면 자체의 판단 근거는 `all_regions(...)[region]["detail"]`(F&G 점수·추세 등)에 이미 담겨 있습니다.
 
 ---
 

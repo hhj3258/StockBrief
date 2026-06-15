@@ -9,7 +9,7 @@ or plug in KIS / Naver for higher fidelity).
 
 from __future__ import annotations
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 from . import lib  # noqa: F401
 from .lib import (  # noqa: F401
@@ -20,8 +20,11 @@ from .lib import (  # noqa: F401
     holding_key,
     overheat_ratio,
     pct_return,
+    portfolio_concentration,
     region_regime,
+    region_weights,
     retro_verdict,
+    star_breakdown,
     star_score,
     theme_weights,
     weight_fit_score,
@@ -33,12 +36,15 @@ __all__ = [
     "lib",
     "weights",
     "theme_weights",
+    "region_weights",
+    "portfolio_concentration",
     "overheat_ratio",
     "fng_band",
     "computed_sentiment",
     "region_regime",
     "weight_fit_score",
     "star_score",
+    "star_breakdown",
     "backcalc_buy_fill",
     "classify_trade",
     "pct_return",

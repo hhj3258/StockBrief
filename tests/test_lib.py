@@ -6,8 +6,11 @@ from stockbrief.lib import (
     computed_sentiment,
     fng_band,
     pct_return,
+    portfolio_concentration,
     region_regime,
+    region_weights,
     retro_verdict,
+    star_breakdown,
     star_score,
     weight_fit_score,
 )
@@ -66,3 +69,25 @@ def test_retrospect():
     assert retro_verdict(-15.4) == "🟢 단순 보유가 나았음"
     assert retro_verdict(0.3) == "⚖️ 거의 동일"
     assert retro_verdict(2.0) == "🔵 매매 잘함"
+
+
+def test_star_breakdown():
+    b = star_breakdown(4.5, 4.5, 3.5, 3.5)
+    assert b["stars"] == star_score(4.5, 4.5, 3.5, 3.5)          # 최종 별점은 star_score 와 동일
+    assert b["components"]["thesis"]["contribution"] == round(4.5 * 0.4, 3)
+    assert b["components"]["relative"]["weight"] == 0.1
+    # 기여도 합 = raw_total
+    assert abs(sum(c["contribution"] for c in b["components"].values()) - b["raw_total"]) < 1e-9
+
+
+def test_region_weights_and_concentration():
+    tradable = [
+        {"code": "069500", "name": "코어", "region": "KR", "eval_amount": 100},
+        {"ticker": "NVDA", "name": "엔비디아", "region": "US", "eval_amount": 300},
+    ]
+    rw = region_weights(tradable)
+    assert rw["US"] == 75.0 and rw["KR"] == 25.0
+    con = portfolio_concentration(tradable, theme_map={"AI": ["NVDA"]}, max_region_pct=70.0)
+    assert con["single"]["NVDA"] == 75.0
+    assert con["themes"]["AI"] == 75.0
+    assert any("시장 집중: US" in f for f in con["flags"])       # US 75% > 70% → 경고

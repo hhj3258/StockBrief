@@ -97,6 +97,40 @@ def theme_weights(tradable, theme_map):
     return out
 
 
+def region_weights(tradable):
+    """기반시장(region)별 비중(%) — 분모는 전체 Σeval. region 없으면 market 폴백."""
+    total = sum(h.get("eval_amount", 0) for h in tradable)
+    agg = {}
+    for h in tradable:
+        r = h.get("region") or h.get("market") or "?"
+        agg[r] = agg.get(r, 0) + h.get("eval_amount", 0)
+    return {r: round(100.0 * e / total, 2) if total else 0.0 for r, e in agg.items()}
+
+
+def portfolio_concentration(tradable, theme_map=None, *, max_position_pct=30.0,
+                            max_region_pct=70.0, max_theme_pct=40.0):
+    """포트폴리오 집중도 요약 — 종목·시장·테마 비중 + 임계 초과 경고(결정적).
+
+    "내 포폴이 한 종목/시장/테마에 몰려있나"를 한 번에. 판단·문장은 스킬/LLM 몫.
+    반환: {single:{key:%}, regions:{region:%}, themes:{theme:%}, flags:[경고...]}
+    """
+    w, _ = weights(tradable)
+    single = {k: v["weight_pct"] for k, v in w.items()}
+    regions = region_weights(tradable)
+    themes = theme_weights(tradable, theme_map) if theme_map else {}
+    flags = []
+    for k, pct in single.items():
+        if pct > max_position_pct:
+            flags.append(f"단일 종목 집중: {w[k].get('name') or k} {pct}% (> {max_position_pct}%)")
+    for r, pct in regions.items():
+        if pct > max_region_pct:
+            flags.append(f"시장 집중: {r} {pct}% (> {max_region_pct}%)")
+    for t, pct in themes.items():
+        if pct > max_theme_pct:
+            flags.append(f"테마 집중: {t} {pct}% (> {max_theme_pct}%)")
+    return {"single": single, "regions": regions, "themes": themes, "flags": flags}
+
+
 def overheat_ratio(tradable, quotes):
     """포폴 과열도 = (RSI>70 종목 수) / (RSI 있는 종목 수). 반환 (ratio, hot, have)."""
     have = 0
@@ -221,10 +255,32 @@ def round_half(x):
     return round(x * 2) / 2
 
 
+_STAR_WEIGHTS = {"thesis": 0.4, "value_trend": 0.3, "weight_fit": 0.2, "relative": 0.1}
+
+
 def star_score(thesis, value_trend, weight_fit, relative):
     """별점 = 테제0.4 + 밸류추세0.3 + 비중적정0.2 + 상대0.1, 0.5 단위 반올림."""
     raw = thesis * 0.4 + value_trend * 0.3 + weight_fit * 0.2 + relative * 0.1
     return round_half(raw)
+
+
+def star_breakdown(thesis, value_trend, weight_fit, relative):
+    """별점 산정 내역 — "왜 이 점수인가"를 컴포넌트별 가중 기여도로.
+
+    반환: {
+      components: {thesis|value_trend|weight_fit|relative: {raw, weight, contribution}},
+      raw_total: Σ기여도(반올림 전),
+      stars: 0.5 단위 별점(star_score 와 동일),
+    }
+    프론트/스킬이 "테제 +1.6 · 밸류추세 +1.05 · 비중적정 +0.7 · 상대 +0.35" 식으로 근거 노출.
+    """
+    vals = {"thesis": thesis, "value_trend": value_trend,
+            "weight_fit": weight_fit, "relative": relative}
+    comps = {k: {"raw": vals[k], "weight": _STAR_WEIGHTS[k],
+                 "contribution": round(vals[k] * _STAR_WEIGHTS[k], 3)}
+             for k in _STAR_WEIGHTS}
+    raw_total = round(sum(c["contribution"] for c in comps.values()), 3)
+    return {"components": comps, "raw_total": raw_total, "stars": round_half(raw_total)}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

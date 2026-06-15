@@ -2,6 +2,7 @@
 
 from stockbrief.benchmark import excess_pct, my_value, resolve_fx
 from stockbrief.metrics import all_regions, flow_score
+from stockbrief.pipeline import _is_similar_title, _title_tokens
 from stockbrief.reconcile import reconcile
 from stockbrief.retrospect import evaluate
 
@@ -64,6 +65,14 @@ def test_reconcile_buy_sell():
     # C = 매수(2*160) - 매도(2*250) = 320 - 500 = -180
     assert by["K"]["fill_price"] == 160 and C == -180
     assert "trades_2026-01-02" in merged
+
+
+def test_news_title_dedup():
+    seen = [_title_tokens("엔비디아 실적 호조에 주가 급등")]
+    # 사실상 같은 이슈(토큰 다수 겹침) → 중복
+    assert _is_similar_title(_title_tokens("엔비디아 실적 호조에 주가 상승"), seen)
+    # 다른 주제 → 중복 아님
+    assert not _is_similar_title(_title_tokens("삼성전자 HBM 신규 공급 계약"), seen)
 
 
 def test_retrospect_verdicts():
