@@ -1,0 +1,135 @@
+"""Advisor — provider 들을 묶어 브리핑 입력(구조화 데이터)을 만든다.
+
+주어진 provider 만 쓰고 없는 건 graceful skip. 결과(BriefingInputs)를 briefing.build_markdown
+또는 소비자 LLM/대시보드가 사용.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Optional
+
+from . import lib
+from .config import AdvisorConfig
+from .metrics import all_regions
+from .models import Holdings
+
+
+@dataclass
+class BriefingInputs:
+    holdings: Holdings
+    tradable: list = field(default_factory=list)        # holdings dict 리스트
+    quotes: dict = field(default_factory=dict)          # {key: quote dict}
+    fx: Optional[float] = None
+    sentiment: Optional[dict] = None                    # {"score","rating","w1","m1"} (US F&G)
+    flow: Optional[dict] = None
+    regions: dict = field(default_factory=dict)
+    weights: dict = field(default_factory=dict)
+    overheat: tuple = (0.0, 0, 0)
+    total_eval: float = 0.0
+    news: dict = field(default_factory=dict)            # {key: [NewsItem...]}
+
+
+def _news_terms(key, name, market, news_queries):
+    cfg = news_queries.get(key)
+    if not cfg:
+        return [name]
+    terms = [cfg.get("primary") or name] + list(cfg.get("kr") or [])[:2]
+    if market != "KR":
+        terms += list(cfg.get("en") or [])[:1]
+    seen, out = set(), []
+    for t in terms:
+        if t and t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out
+
+
+class Advisor:
+    def __init__(self, config: AdvisorConfig, holdings, quotes=None, fx=None,
+                 sentiment=None, news=None, naver_news=None, flow=None):
+        self.config = config
+        self.p_holdings = holdings
+        self.p_quotes = quotes
+        self.p_fx = fx
+        self.p_sentiment = sentiment
+        self.p_news = news
+        self.p_naver = naver_news
+        self.p_flow = flow
+
+    def _proxy_keys(self):
+        out = {}
+        for region, cfg in self.config.regions.items():
+            proxy = cfg.get("trend_proxy")
+            if proxy:
+                out[proxy] = "KR"   # 지수 프록시는 대개 KRX 상장(필요시 소비자가 quotes에 직접)
+        return out
+
+    def collect_news(self, days=7, asof=None):
+        if not (self.p_news or self.p_naver):
+            return {}
+        h = self._holdings
+        out = {}
+        for p in h.positions:
+            terms = _news_terms(p.key, p.name, p.market, self.config.news_queries)
+            prov = self.p_naver if (p.market == "KR" and self.p_naver and getattr(self.p_naver, "available", True)) else self.p_news
+            if prov is None:
+                prov = self.p_news or self.p_naver
+            items, seen = [], set()
+            for t in terms:
+                try:
+                    for it in prov.search(t, days=days, asof=asof):
+                        if it.url and it.title not in seen:
+                            seen.add(it.title)
+                            items.append(it)
+                except Exception:  # noqa: BLE001
+                    continue
+            items.sort(key=lambda x: x.date or "", reverse=True)
+            out[p.key] = items[:6]
+        return out
+
+    def run(self, news_days=7, asof=None) -> BriefingInputs:
+        h = self.p_holdings.holdings()
+        self._holdings = h
+        tradable = h.tradable_dicts()
+        markets = {p.key: p.market for p in h.positions}
+
+        quotes = {}
+        if self.p_quotes:
+            want = {**markets, **self._proxy_keys()}
+            try:
+                qmap = self.p_quotes.quotes(list(want.keys()), want)
+                quotes = {k: v.as_dict() for k, v in qmap.items()}
+            except Exception:  # noqa: BLE001
+                quotes = {}
+
+        fx = None
+        if self.p_fx:
+            try:
+                fx = self.p_fx.usdkrw()
+            except Exception:  # noqa: BLE001
+                fx = None
+        if fx:
+            quotes["_fx"] = {"USDKRW": fx}
+
+        sentiment = None
+        cnn = None
+        if self.p_sentiment:
+            cnn = self.p_sentiment.score("US")
+            sentiment = getattr(self.p_sentiment, "detail", lambda r: None)("US")
+
+        flow = None
+        if self.p_flow:
+            try:
+                flow = self.p_flow.kospi_flows()
+            except Exception:  # noqa: BLE001
+                flow = None
+
+        regions = all_regions(tradable, quotes, self.config.regions, cnn_score=cnn, investor=flow)
+        w, total = lib.weights(tradable)
+        oh = lib.overheat_ratio(tradable, quotes)
+        news = self.collect_news(days=news_days, asof=asof)
+
+        return BriefingInputs(holdings=h, tradable=tradable, quotes=quotes, fx=fx,
+                              sentiment=sentiment, flow=flow, regions=regions,
+                              weights=w, overheat=oh, total_eval=total, news=news)

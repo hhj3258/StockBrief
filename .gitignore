@@ -1,0 +1,34 @@
+# ── 개인정보·비밀 절대 커밋 금지 (공개 리포) ──
+secrets/
+state/
+logs/
+*.enc
+.env
+.env.*
+*.token
+*token*.json
+# 실제 보유·점수판 데이터(소비 프로젝트 소유, 패키지엔 합성 예시만)
+holdings*.json
+benchmark*.json
+*_latest.json
+*_real*.json
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# ── OS / 에디터 ──
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

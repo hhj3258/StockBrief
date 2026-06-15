@@ -1,0 +1,47 @@
+"""stockbrief — pluggable daily stock-portfolio briefing engine.
+
+Feed it your holdings + market data (via swappable providers) and it produces
+a per-market regime read, per-holding star ratings, news, and a benchmark
+scoreboard for a daily briefing. The deterministic math is in `stockbrief.lib`;
+data sources are providers you inject (run key-free with the bundled defaults,
+or plug in KIS / Naver for higher fidelity).
+"""
+
+from __future__ import annotations
+
+__version__ = "0.1.0"
+
+from . import lib  # noqa: F401
+from .lib import (  # noqa: F401
+    backcalc_buy_fill,
+    classify_trade,
+    computed_sentiment,
+    fng_band,
+    holding_key,
+    overheat_ratio,
+    pct_return,
+    region_regime,
+    retro_verdict,
+    star_score,
+    theme_weights,
+    weight_fit_score,
+    weights,
+)
+
+__all__ = [
+    "__version__",
+    "lib",
+    "weights",
+    "theme_weights",
+    "overheat_ratio",
+    "fng_band",
+    "computed_sentiment",
+    "region_regime",
+    "weight_fit_score",
+    "star_score",
+    "backcalc_buy_fill",
+    "classify_trade",
+    "pct_return",
+    "retro_verdict",
+    "holding_key",
+]

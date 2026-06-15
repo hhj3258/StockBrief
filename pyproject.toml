@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stockbrief"
+version = "0.1.0"
+description = "Pluggable daily stock-portfolio briefing engine — per-market regime, star ratings, news, benchmark. Runs key-free; plug in KIS/Naver for higher fidelity."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "hhj3258" }]
+keywords = ["stock", "portfolio", "briefing", "investing", "market-regime", "kospi", "etf"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Financial and Insurance Industry",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Office/Business :: Financial :: Investment",
+]
+# 코어는 표준 라이브러리만 — 데이터 소스는 아래 extras 로 선택 설치.
+dependencies = []
+
+[project.optional-dependencies]
+indicators = ["pandas>=2.0"]                 # RSI·이동평균·52주 (시세 제공자가 사용)
+quotes-kr = ["pykrx>=1.0", "pandas>=2.0"]    # 키 불필요 한국 시세
+quotes-us = ["yfinance>=0.2", "pandas>=2.0"] # 키 불필요 미국 시세
+kis = ["pykis>=2.1", "pandas>=2.0"]          # 선택: 한국투자증권 고정밀(시세·수급·잔고)
+all = ["pandas>=2.0", "pykrx>=1.0", "yfinance>=0.2", "pykis>=2.1"]
+dev = ["pytest>=8.0"]
+
+[project.urls]
+Homepage = "https://github.com/hhj3258/stockbrief"
+Repository = "https://github.com/hhj3258/stockbrief"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+stockbrief = ["py.typed"]
