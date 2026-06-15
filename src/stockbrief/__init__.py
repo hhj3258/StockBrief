@@ -1,4 +1,4 @@
-"""stockbrief — pluggable daily stock-portfolio briefing engine.
+"""StockBrief — pluggable daily stock-portfolio briefing engine.
 
 Feed it your holdings + market data (via swappable providers) and it produces
 a per-market regime read, per-holding star ratings, news, and a benchmark

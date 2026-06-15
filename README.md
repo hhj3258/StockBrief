@@ -1,4 +1,4 @@
-# stockbrief
+# StockBrief
 
 ![python](https://img.shields.io/badge/python-3.10+-blue) ![license](https://img.shields.io/badge/license-MIT-green) ![status](https://img.shields.io/badge/status-alpha-orange)
 
@@ -66,7 +66,7 @@ pip install "stockbrief[all]"          # 전부
 
 ### 상장 시장(market) vs 기반 시장(region)
 
-종목 하나에 시장 개념이 두 가지 붙습니다. 이 둘을 구분하는 것이 stockbrief의 출발점입니다.
+종목 하나에 시장 개념이 두 가지 붙습니다. 이 둘을 구분하는 것이 StockBrief의 출발점입니다.
 
 | 개념 | 필드 | 뜻 | 쓰임 |
 |---|---|---|---|

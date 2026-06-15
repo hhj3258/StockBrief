@@ -1,4 +1,4 @@
-# stockbrief — 아키텍처
+# StockBrief — 아키텍처
 
 다른 개발자나 AI가 구조를 파악하고 안전하게 고치거나 확장할 수 있도록 쓴 문서입니다. 사용법은 [docs/USAGE.md](docs/USAGE.md), 용어는 [README](README.md)의 "핵심 개념"에 있습니다.
 

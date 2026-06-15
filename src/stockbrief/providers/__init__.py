@@ -1,4 +1,4 @@
-"""stockbrief providers.
+"""StockBrief providers.
 
 키 불필요 기본 provider 는 패키지 import 시 바로 쓸 수 있다.
 시세 provider(pykrx·yfinance·KIS)는 선택 의존성이라 **명시 경로로** import:

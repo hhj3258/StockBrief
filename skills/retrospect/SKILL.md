@@ -7,7 +7,7 @@ description: 지정 기간 매매를 회고. "단순 보유 vs 실제 매매" % 
 
 > 두 시점(시작·종료)의 보유를 비교해 **% 수익률 기준**으로 "그냥 둘 걸 그랬나, 매매가 나았나"를 평가.
 
-## 계산은 stockbrief
+## 계산은 StockBrief
 `stockbrief.retrospect.evaluate(row, threshold=1.0)` 가 행 단위로 판정한다.
 - **변화없음**: 수익률 = (현재가−평단)/평단. 단순=매매후.
 - **추가매수**: 단순=시작평단 기준 · 매매후=종료평단 기준 · 차이=매매후−단순.
@@ -18,7 +18,7 @@ description: 지정 기간 매매를 회고. "단순 보유 vs 실제 매매" % 
 1. 시작 시점 보유와 종료 시점 보유를 **종목 매칭**.
 2. 각 종목을 입력 행으로 구성(같은 통화로 정규화, 원화 권장):
    `{name, start_qty, start_avg, end_qty, end_avg, now_price, [sold_price]}`
-   - 매수 체결가·매도가가 기록돼 있으면(stockbrief reconcile 의 `trades_*`) 그대로 사용.
+   - 매수 체결가·매도가가 기록돼 있으면(StockBrief reconcile 의 `trades_*`) 그대로 사용.
    - 매도가 없으면 그날 시세 프록시. 전량매도 종목은 동일 테마 변화율로 근사.
 3. `evaluate` 결과를 표 + 종합(🔵/🟢/⚖️ 승수) + 패턴·교훈으로 서술.
 

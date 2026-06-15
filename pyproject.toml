@@ -30,8 +30,8 @@ all = ["pandas>=2.0", "pykrx>=1.0", "yfinance>=0.2", "pykis>=2.1"]
 dev = ["pytest>=8.0"]
 
 [project.urls]
-Homepage = "https://github.com/hhj3258/stockbrief"
-Repository = "https://github.com/hhj3258/stockbrief"
+Homepage = "https://github.com/hhj3258/StockBrief"
+Repository = "https://github.com/hhj3258/StockBrief"
 
 [tool.setuptools.packages.find]
 where = ["src"]
