@@ -53,16 +53,19 @@ flowchart TD
 
 ```
 src/stockbrief/
-  lib.py          # 순수 계산식: 평균 매수가 역산·비중·과열도·심리 밴드·자체 추정 심리·시장 국면·종목 점수·회고 %
-  indicators.py   # OHLCV → RSI14·이동평균(정/역배열)·52주 위치 (pandas)
-  metrics.py      # all_regions(시장별 독립 국면)·flow_score
+  lib.py          # 순수 계산식: 평균 매수가 역산·비중·region/테마 비중·집중도·과열도(RSI 임계 인자)·심리 밴드·자체 추정 심리·시장 국면·종목 점수(+산정 내역 star_breakdown)·회고 %
+  indicators.py   # OHLCV → RSI14·이동평균(정/역배열)·52주 위치 (pandas, 없으면 친절한 안내)
+  metrics.py      # all_regions(시장별 독립 국면, rsi_overheat 튜닝)·flow_score
   benchmark.py    # my_value(라이브 재계산)·resolve_fx·excess_pct(초과 수익)
   reconcile.py    # 보유 변화 비교 → 거래 복원 + 순현금흐름
   retrospect.py   # 단순 보유 대비 매매 후 성과 % 평가
-  config.py       # AdvisorConfig (dict/yaml 로드, 기본값 폴백)
+  state.py        # StateStore — 일별 평가액 스냅샷 히스토리(JSON) + 기간 변화율
+  config.py       # AdvisorConfig (dict/yaml 로드, thresholds 튜닝, 기본값 폴백)
   models.py       # Position·Holdings·Quote·NewsItem (정규화한 데이터 계약)
-  pipeline.py     # Advisor(provider를 묶어 run()) → BriefingInputs
+  pipeline.py     # Advisor(provider를 묶어 run()) → BriefingInputs (+뉴스 유사제목 중복제거)
   briefing.py     # build_markdown(BriefingInputs) → 마크다운
+  llm.py          # build_prompt/summarize — 사용자 LLM 콜러블로 산문화(키·벤더 비포함)
+  _util.py        # retry_call — 네트워크 일시 오류 백오프 재시도
   providers/
     base.py       # 추상 클래스: Holdings/Quote/Sentiment/News/Fx/Flow Provider
     holdings_json.py · holdings_dict.py
@@ -74,8 +77,8 @@ skills/           # Claude 스킬(portfolio-advisor·retrospect)
 examples/ · tests/
 ```
 
-의존성 방향: `providers → models/indicators/lib`, `metrics/benchmark/reconcile/retrospect → lib`, `pipeline → config/metrics/lib/providers(base)`, `briefing → (BriefingInputs)`, `integrations → pipeline/briefing/providers`.
-**불변식: 코어는 providers를 import하지 않습니다**(의존은 한 방향뿐).
+의존성 방향: `providers → models/indicators/lib/_util`, `metrics/benchmark/reconcile/retrospect/state → lib`, `pipeline → config/metrics/lib/providers(base)`, `briefing·llm → (BriefingInputs/마크다운)`, `integrations → pipeline/briefing/providers`.
+**불변식: 코어는 providers를 import하지 않습니다**(의존은 한 방향뿐). `llm`은 API 키·특정 벤더에 의존하지 않습니다(사용자 콜러블만 호출).
 
 ---
 
@@ -103,7 +106,7 @@ NewsItem  = date(YYYY-MM-DD) · title · url · source
 | FxProvider | `usdkrw() -> float\|None` | frankfurter/ECB | — |
 | FlowProvider | `kospi_flows(days) -> dict` | — | KIS |
 
-**없으면 건너뜀**: provider를 넘기지 않으면 Advisor가 그 단계를 건너뜁니다. 국면은 보유·추세만으로 제한 판정하고, 환율이 없으면 평가액은 입력값을 그대로 쓰며, 뉴스는 생략합니다.
+**없으면 건너뜀 + 실패 견딤**: provider를 넘기지 않으면 Advisor가 그 단계를 건너뜁니다(국면은 보유·추세만, 환율 없으면 입력값 그대로, 뉴스 생략). 무료 네트워크 provider(CNN·Google·Naver)는 일시 오류 시 `_util.retry_call`로 1회 백오프 재시도하고, 끝내 실패하면 그 섹션만 비우고 **브리핑 전체는 강행**합니다. 실패 원인은 `logging`(WARNING)으로 노출.
 
 ---
 
@@ -123,14 +126,17 @@ NewsItem  = date(YYYY-MM-DD) · title · url · source
 - **증권사 보유 연동**: `HoldingsProvider`를 구현해 `holdings()`가 정규화한 `Holdings`를 돌려주게 합니다. 예: `integrations/kis.KisHoldingsProvider`.
 - **투자 심리 소스 추가(예: 한국 심리 지수)**: `SentimentProvider`를 구현하고, `regions[r].sentiment` 키를 맞춘 뒤 `metrics.all_regions`의 심리 분기를 넓힙니다.
 - **새 통합(다른 봇·대시보드)**: `integrations/<이름>.py`에 어댑터와 `build_*_briefing` 한 줄 함수를 둡니다.
+- **LLM 산문 얹기**: `llm.summarize(markdown, llm_fn)` — 사용자 콜러블만 주면 데이터→마크다운→프롬프트→호출. 키·벤더는 패키지 밖(소비자 환경).
+- **임계값 튜닝**: `AdvisorConfig.thresholds`(예: `rsi_overheat`) override. 계산 함수는 임계를 인자로 받고, pipeline이 config에서 주입합니다.
+- **성과 추적**: `state.StateStore`로 일별 평가액을 누적 기록해 기간 변화율·알파를 계산합니다.
 
 ---
 
 ## 8. 결정성 · 테스트 · 프라이버시
 
-- 순수 계산 함수는 입력이 같으면 출력도 같습니다. `tests/`(pytest)의 `test_lib`·`test_providers`·`test_compute`는 **합성 데이터만** 씁니다.
-- 네트워크 provider는 실패하면 빈 결과나 폴백을 돌려줍니다(예외로 파이프라인을 멈추지 않습니다). 선택 의존성은 **필요할 때만 import**하므로, 해당 의존성이 없어도 모듈 import는 됩니다.
-- **개인정보 0**: 저장소에 실제 보유·계좌·키가 없습니다. `.gitignore`가 `secrets/ state/ logs/ *.enc holdings*.json benchmark*.json`을 막습니다. 예시와 테스트는 모두 합성입니다.
+- 순수 계산 함수는 입력이 같으면 출력도 같습니다. `tests/`(pytest)의 `test_lib`·`test_providers`·`test_compute`·`test_state`는 **합성 데이터만** 쓰며 26개입니다.
+- 네트워크 provider는 일시 오류 시 재시도 후, 끝내 실패하면 빈 결과/폴백을 돌려줍니다(예외로 파이프라인을 멈추지 않습니다). 선택 의존성은 **필요할 때만 import**하므로, 해당 의존성이 없어도 모듈 import는 됩니다.
+- **개인정보 0**: 저장소에 실제 보유·계좌·키가 없습니다. `.gitignore`가 `secrets/ state/ logs/ *.enc holdings*.json benchmark*.json state*.json`을 막습니다. 예시와 테스트는 모두 합성입니다.
 
 ---
 
