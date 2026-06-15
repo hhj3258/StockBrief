@@ -70,7 +70,7 @@ def classify_trade(q_before, q_after, eps=1e-9):
 # 비중 · 과열도
 # ─────────────────────────────────────────────────────────────────────────────
 def weights(tradable):
-    """단일 비중(%) — 분모는 Σ(eval_amount) 고정.
+    """단일 비중(%) — 분모는 보유 평가액 합계로 고정.
 
     반환: ({key: {"name", "eval", "weight_pct"}}, total_eval)
     """
@@ -87,7 +87,7 @@ def weights(tradable):
 
 
 def theme_weights(tradable, theme_map):
-    """테마 비중(%) — theme_map: {테마명: [key,...]}. 분모는 전체 Σeval."""
+    """테마 비중(%) — theme_map: {테마명: [key,...]}. 분모는 전체 평가액 합계."""
     total = sum(h.get("eval_amount", 0) for h in tradable)
     by_key = {holding_key(h): h.get("eval_amount", 0) for h in tradable}
     out = {}
@@ -98,7 +98,7 @@ def theme_weights(tradable, theme_map):
 
 
 def region_weights(tradable):
-    """기반시장(region)별 비중(%) — 분모는 전체 Σeval. region 없으면 market 폴백."""
+    """기반시장(region)별 비중(%) — 분모는 전체 평가액 합계. region 없으면 market 폴백."""
     total = sum(h.get("eval_amount", 0) for h in tradable)
     agg = {}
     for h in tradable:
@@ -272,7 +272,7 @@ def star_breakdown(thesis, value_trend, weight_fit, relative):
 
     반환: {
       components: {thesis|value_trend|weight_fit|relative: {raw, weight, contribution}},
-      raw_total: Σ기여도(반올림 전),
+      raw_total: 기여도 합(반올림 전),
       stars: 0.5 단위 별점(star_score 와 동일),
     }
     프론트/스킬이 "테제 +1.6 · 밸류추세 +1.05 · 비중적정 +0.7 · 상대 +0.35" 식으로 근거 노출.
