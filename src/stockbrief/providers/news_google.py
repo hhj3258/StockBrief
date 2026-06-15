@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import logging
 import re
 import urllib.parse
 import urllib.request
@@ -13,6 +14,7 @@ from xml.etree import ElementTree as ET
 from ..models import NewsItem
 from .base import NewsProvider
 
+logger = logging.getLogger(__name__)
 _TAG = re.compile(r"<[^>]+>")
 
 
@@ -27,7 +29,8 @@ def _within(pub_dt: str, cutoff: datetime):
             d = d.replace(tzinfo=timezone.utc)
         d = d.astimezone(timezone.utc)
         return d >= cutoff, d.date().isoformat()
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.debug("발행일 파싱 실패 (%r): %s", pub_dt, e)
         return False, None
 
 
@@ -48,7 +51,8 @@ class GoogleNewsProvider(NewsProvider):
             req = urllib.request.Request(url, headers={"User-Agent": "stockbrief"})
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
                 root = ET.fromstring(r.read())
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Google 뉴스 조회 실패 (query=%r): %s", query, e)
             return out
         for item in root.iter("item"):
             ok, date = _within(item.findtext("pubDate"), cutoff)

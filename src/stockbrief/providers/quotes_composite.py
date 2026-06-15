@@ -6,8 +6,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from ..models import Quote
 from .base import QuoteProvider
+
+logger = logging.getLogger(__name__)
 
 
 class CompositeQuoteProvider(QuoteProvider):
@@ -29,6 +33,7 @@ class CompositeQuoteProvider(QuoteProvider):
                 continue
             try:
                 out.update(prov.quotes(ks, {k: m for k in ks}))
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                logger.warning("시세 provider 실패 (market=%s): %s", m, e, exc_info=True)
                 continue
         return out

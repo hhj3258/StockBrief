@@ -12,6 +12,7 @@ KIS 계좌가 있는 누구나 쓸 수 있는 범용 어댑터.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -23,6 +24,8 @@ from ..providers.base import HoldingsProvider
 from ..providers.fx_free import FreeFxProvider
 from ..providers.news_google import GoogleNewsProvider
 from ..providers.sentiment_cnn import CnnFngProvider
+
+logger = logging.getLogger(__name__)
 
 
 class KisHoldingsProvider(HoldingsProvider):
@@ -46,6 +49,9 @@ class KisHoldingsProvider(HoldingsProvider):
             sym = getattr(s, "symbol", None)
             if not sym or sym in self.ignore:
                 continue
+            missing = [a for a in ("qty", "purchase_price", "amount", "profit_rate") if not hasattr(s, a)]
+            if missing:   # pykis 필드명이 바뀌면 조용히 0 으로 채워지는 것 방지
+                logger.warning("KIS 잔고 %s: 예상 필드 누락 %s → 0 으로 채움(pykis 버전 확인 필요)", sym, missing)
             positions.append(Position(
                 key=sym, name=getattr(s, "name", sym), market=self.country,
                 region=self.region_map.get(sym, self.country),
@@ -62,7 +68,7 @@ class KisHoldingsProvider(HoldingsProvider):
 def build_briefing(
     session, *, config: AdvisorConfig | None = None, country: str = "KR",
     region_map: dict | None = None, ignore_symbols=None,
-    quotes=None, sentiment=None, news=None, fx=None, flow=None,
+    quotes=None, sentiment=None, news=None, naver_news=None, fx=None, flow=None,
     out_dir: str | Path | None = None, date: str | None = None,
     title: str = "보유주식 데일리 브리핑",
 ) -> dict:
@@ -71,6 +77,7 @@ def build_briefing(
     quotes 미지정 시 시세 단계는 graceful skip(국면은 보유만으로 제한) — 키 불필요 시세를 원하면
     CompositeQuoteProvider({"KR": PykrxQuoteProvider(), "US": YfinanceQuoteProvider()}) 를 넘긴다.
     sentiment/news/fx 는 미지정 시 키 불필요 기본(CNN·Google·ECB) 사용.
+    naver_news 를 주면 한국 상장 종목 뉴스를 네이버로 조회(나머지·폴백은 news=구글).
     """
     config = config or AdvisorConfig.default()
     date = date or datetime.now().strftime("%Y-%m-%d")
@@ -81,6 +88,7 @@ def build_briefing(
         fx=fx or FreeFxProvider(),
         sentiment=sentiment or CnnFngProvider(),
         news=news or GoogleNewsProvider(),
+        naver_news=naver_news,
         flow=flow,
     )
     md = build_markdown(advisor.run(), config, title=title, date=date)

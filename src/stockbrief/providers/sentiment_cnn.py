@@ -6,9 +6,12 @@ CNN 비공식 dataviz JSON 에서 직접. region='US' 만 점수 제공(그 외 
 from __future__ import annotations
 
 import json
+import logging
 import urllib.request
 
 from .base import SentimentProvider
+
+logger = logging.getLogger(__name__)
 
 _URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
 _HEADERS = {
@@ -43,7 +46,8 @@ class CnnFngProvider(SentimentProvider):
                 "prev_close": r1(fg.get("previous_close")),
                 "w1": r1(fg.get("previous_1_week")), "m1": r1(fg.get("previous_1_month")),
             }
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            logger.warning("CNN 공포탐욕지수 조회 실패: %s", e)
             self._cache = {}
         return self._cache
 

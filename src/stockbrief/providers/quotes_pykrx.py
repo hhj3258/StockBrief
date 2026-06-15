@@ -5,12 +5,14 @@ pykrx 일봉(주식·ETF) → 현재가·등락률 + RSI·이동평균·52주(in
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 
 from ..indicators import indicators_from_ohlcv
 from ..models import Quote
 from .base import QuoteProvider
 
+logger = logging.getLogger(__name__)
 _COLMAP = {"시가": "open", "고가": "high", "저가": "low", "종가": "close", "거래량": "volume"}
 
 
@@ -29,9 +31,11 @@ class PykrxQuoteProvider(QuoteProvider):
                 if d is not None and len(d):
                     df = d
                     break
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                logger.debug("pykrx %s 실패 (code=%s): %s", fn, code, e)
                 continue
         if df is None or not len(df):
+            logger.warning("pykrx 일봉 없음 (code=%s)", code)
             return None
         df = df.rename(columns=_COLMAP)
         keep = [c for c in ("open", "high", "low", "close", "volume") if c in df.columns]

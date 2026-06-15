@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import urllib.request
 
 from .base import FxProvider
+
+logger = logging.getLogger(__name__)
 
 _SOURCES = [
     ("https://api.frankfurter.app/latest?from=USD&to=KRW",
@@ -30,6 +33,8 @@ class FreeFxProvider(FxProvider):
                 rate = round(float(rate_raw), 2)
                 self.last = {"USDKRW": rate, "source": url.split("/")[2], "asof": asof}
                 return rate
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                logger.debug("환율 소스 실패 (%s): %s", url.split("/")[2], e)
                 continue
+        logger.warning("환율 수집 실패 — 모든 소스 실패(frankfurter·er-api)")
         return None

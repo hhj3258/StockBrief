@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import urllib.parse
 import urllib.request
@@ -15,6 +16,8 @@ from datetime import datetime, timezone
 from ..models import NewsItem
 from .base import NewsProvider
 from .news_google import _clean, _within
+
+logger = logging.getLogger(__name__)
 
 
 class NaverNewsProvider(NewsProvider):
@@ -45,7 +48,8 @@ class NaverNewsProvider(NewsProvider):
                 "User-Agent": "stockbrief"})
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
                 data = json.loads(r.read().decode("utf-8"))
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Naver 뉴스 조회 실패 (query=%r): %s", query, e)
             return out
         for it in data.get("items", []):
             ok, date = _within(it.get("pubDate"), cutoff)

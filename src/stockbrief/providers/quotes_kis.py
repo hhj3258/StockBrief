@@ -8,9 +8,13 @@
 
 from __future__ import annotations
 
+import logging
+
 from ..indicators import indicators_from_ohlcv
 from ..models import Quote
 from .base import QuoteProvider
+
+logger = logging.getLogger(__name__)
 
 
 class KisQuoteProvider(QuoteProvider):
@@ -25,7 +29,8 @@ class KisQuoteProvider(QuoteProvider):
         for code in keys:
             try:
                 q = self.quote_fn(self.kis, code)
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                logger.warning("KIS 시세 실패 (code=%s): %s", code, e)
                 continue
             price = q.get("price")
             quote = Quote(key=code, name=q.get("name"), price=price,
@@ -38,7 +43,7 @@ class KisQuoteProvider(QuoteProvider):
                 quote.ma_align = ind.get("ma_align", "n/a")
                 quote.w52_high, quote.w52_low, quote.w52_pos_pct = (
                     ind.get("w52_high"), ind.get("w52_low"), ind.get("w52_pos_pct"))
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as e:  # noqa: BLE001
+                logger.debug("지표 계산 실패 (code=%s): %s", code, e)
             out[code] = quote
         return out

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -13,6 +14,8 @@ from . import lib
 from .config import AdvisorConfig
 from .metrics import all_regions
 from .models import Holdings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -82,7 +85,8 @@ class Advisor:
                         if it.url and it.title not in seen:
                             seen.add(it.title)
                             items.append(it)
-                except Exception:  # noqa: BLE001
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("뉴스 검색 실패 (%s, term=%r): %s", p.key, t, e)
                     continue
             items.sort(key=lambda x: x.date or "", reverse=True)
             out[p.key] = items[:6]
@@ -100,17 +104,18 @@ class Advisor:
             try:
                 qmap = self.p_quotes.quotes(list(want.keys()), want)
                 quotes = {k: v.as_dict() for k, v in qmap.items()}
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                logger.warning("시세 조회 실패: %s", e, exc_info=True)
                 quotes = {}
 
         fx = None
         if self.p_fx:
             try:
                 fx = self.p_fx.usdkrw()
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                logger.warning("환율 조회 실패: %s", e)
                 fx = None
-        if fx:
-            quotes["_fx"] = {"USDKRW": fx}
+        # 환율은 BriefingInputs.fx 로 전달한다(과거의 quotes["_fx"] 매직키는 제거 — 종목 dict 오염 방지).
 
         sentiment = None
         cnn = None
@@ -122,7 +127,8 @@ class Advisor:
         if self.p_flow:
             try:
                 flow = self.p_flow.kospi_flows()
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                logger.warning("수급 조회 실패: %s", e)
                 flow = None
 
         regions = all_regions(tradable, quotes, self.config.regions, cnn_score=cnn, investor=flow)

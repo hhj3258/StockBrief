@@ -7,13 +7,27 @@
 from __future__ import annotations
 
 
+def _require_pandas():
+    """pandas 지연 import + 친절한 안내. 코어(dependencies=[])만 깔고 시세/지표 경로를
+    쓰면 여기서 막힌다 — 어떤 extras 를 깔아야 하는지 알려준다."""
+    try:
+        import pandas as pd
+        return pd
+    except ImportError as e:  # noqa: BLE001
+        raise ImportError(
+            "지표 계산(indicators)에는 pandas 가 필요합니다. "
+            "설치: pip install \"stockbrief[indicators]\" "
+            "(또는 quotes-kr/quotes-us/kis extras — KIS 시세 경로도 pandas 필요)."
+        ) from e
+
+
 def _rsi14(close):
     if len(close) < 15:
         return None
     delta = close.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
-    import pandas as pd
+    pd = _require_pandas()
     avg_gain = gain.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean()
     avg_loss = loss.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean()
     rs = avg_gain / avg_loss.replace(0, pd.NA)

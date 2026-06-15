@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 from ..indicators import indicators_from_ohlcv
 from ..models import Quote
 from .base import QuoteProvider
+
+logger = logging.getLogger(__name__)
 
 
 class YfinanceQuoteProvider(QuoteProvider):
@@ -19,7 +23,8 @@ class YfinanceQuoteProvider(QuoteProvider):
                 continue
             try:
                 df = yf.Ticker(tkr).history(period=self.period, auto_adjust=True)
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                logger.warning("yfinance 시세 실패 (ticker=%s): %s", tkr, e)
                 continue
             if df is None or not len(df):
                 continue

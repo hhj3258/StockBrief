@@ -60,6 +60,8 @@ pip install "stockbrief[kis]"          # + 한국투자증권 시세·잔고(pyk
 pip install "stockbrief[all]"          # 전부
 ```
 
+> 시세·지표 경로(pykrx·yfinance·KIS)는 **pandas가 필요**합니다 — 위 `quotes-*`·`kis` extras에 포함돼 있습니다. 코어만 설치하고 시세 provider를 쓰면 지표 계산에서 안내 메시지와 함께 막힙니다.
+> 데이터 소스 실패는 표준 `logging`으로 경고를 남깁니다. 원인을 보려면 `logging.basicConfig(level=logging.WARNING)`를 켜세요.
 > 아직 PyPI에 올리지 않았습니다. 지금은 소스에서 설치하세요: `pip install -e .`
 
 ## 핵심 개념
