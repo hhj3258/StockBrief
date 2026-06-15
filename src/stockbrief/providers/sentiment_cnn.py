@@ -9,6 +9,7 @@ import json
 import logging
 import urllib.request
 
+from .._util import retry_call
 from .base import SentimentProvider
 
 logger = logging.getLogger(__name__)
@@ -35,10 +36,12 @@ class CnnFngProvider(SentimentProvider):
     def _fetch(self) -> dict | None:
         if self._cache is not None:
             return self._cache
-        try:
+        def _get():
             req = urllib.request.Request(_URL, headers=_HEADERS)
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
-                data = json.load(r)
+                return json.load(r)
+        try:
+            data = retry_call(_get, label="CNN F&G")
             fg = data.get("fear_and_greed", {}) or {}
             r1 = lambda x: round(float(x), 1) if x is not None else None  # noqa: E731
             self._cache = {

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from xml.etree import ElementTree as ET
 
+from .._util import retry_call
 from ..models import NewsItem
 from .base import NewsProvider
 
@@ -47,10 +48,13 @@ class GoogleNewsProvider(NewsProvider):
         url = (f"https://news.google.com/rss/search?q={q}"
                f"&hl={self.lang}&gl={self.country}&ceid={self.country}:{self.lang}")
         out: list[NewsItem] = []
-        try:
+
+        def _get():
             req = urllib.request.Request(url, headers={"User-Agent": "stockbrief"})
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
-                root = ET.fromstring(r.read())
+                return ET.fromstring(r.read())
+        try:
+            root = retry_call(_get, label=f"Google news {query!r}")
         except Exception as e:  # noqa: BLE001
             logger.warning("Google 뉴스 조회 실패 (query=%r): %s", query, e)
             return out

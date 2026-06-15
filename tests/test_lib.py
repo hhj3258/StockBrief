@@ -5,6 +5,7 @@ from stockbrief.lib import (
     classify_trade,
     computed_sentiment,
     fng_band,
+    overheat_ratio,
     pct_return,
     portfolio_concentration,
     region_regime,
@@ -78,6 +79,14 @@ def test_star_breakdown():
     assert b["components"]["relative"]["weight"] == 0.1
     # 기여도 합 = raw_total
     assert abs(sum(c["contribution"] for c in b["components"].values()) - b["raw_total"]) < 1e-9
+
+
+def test_overheat_threshold_configurable():
+    tradable = [{"code": "A", "eval_amount": 1}, {"code": "B", "eval_amount": 1}]
+    quotes = {"A": {"rsi14": 72}, "B": {"rsi14": 65}}
+    assert overheat_ratio(tradable, quotes)[1] == 1            # 기본 70 → A만 과열
+    assert overheat_ratio(tradable, quotes, rsi_overheat=60)[1] == 2   # 60 → 둘 다
+    assert overheat_ratio(tradable, quotes, rsi_overheat=80)[1] == 0   # 80 → 없음
 
 
 def test_region_weights_and_concentration():

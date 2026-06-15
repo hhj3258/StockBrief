@@ -13,6 +13,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
+from .._util import retry_call
 from ..models import NewsItem
 from .base import NewsProvider
 from .news_google import _clean, _within
@@ -42,12 +43,15 @@ class NaverNewsProvider(NewsProvider):
         url = ("https://openapi.naver.com/v1/search/news.json?"
                + urllib.parse.urlencode({"query": query, "display": 20, "sort": "date"}))
         out: list[NewsItem] = []
-        try:
+
+        def _get():
             req = urllib.request.Request(url, headers={
                 "X-Naver-Client-Id": self.cid, "X-Naver-Client-Secret": self.csec,
                 "User-Agent": "stockbrief"})
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
-                data = json.loads(r.read().decode("utf-8"))
+                return json.loads(r.read().decode("utf-8"))
+        try:
+            data = retry_call(_get, label=f"Naver news {query!r}")
         except Exception as e:  # noqa: BLE001
             logger.warning("Naver 뉴스 조회 실패 (query=%r): %s", query, e)
             return out

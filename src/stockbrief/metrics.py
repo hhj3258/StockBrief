@@ -23,9 +23,10 @@ def flow_score(investor: dict | None):
     return max(0.0, min(100.0, base))
 
 
-def all_regions(tradable, quotes, regions_cfg, *, cnn_score=None, investor=None):
+def all_regions(tradable, quotes, regions_cfg, *, cnn_score=None, investor=None, rsi_overheat=70.0):
     """시장별 독립 국면. tradable: holdings dict 리스트. quotes: {key: quote dict}.
     cnn_score: sentiment=='cnn_fng' region 에 쓸 감성 점수(없으면 None). investor: 수급 dict(선택).
+    rsi_overheat: 과열 판정 RSI 임계(기본 70, config 로 튜닝).
     반환: {region: {flag, weight_pct, n, label, tone, detail}}.
     """
     total = sum(h.get("eval_amount", 0) for h in tradable)
@@ -51,7 +52,7 @@ def all_regions(tradable, quotes, regions_cfg, *, cnn_score=None, investor=None)
             continue
         align = q.get("ma_align", "혼조")
         rate = q.get("rate")
-        oh, _, _ = overheat_ratio(members, quotes)
+        oh, _, _ = overheat_ratio(members, quotes, rsi_overheat=rsi_overheat)
         label, detail = region_regime(s_score, align, rate, oh)
         detail["sentiment_kind"], detail["sentiment_score"] = s_kind, s_score
         out[region] = {"flag": cfg.get("flag", ""), "weight_pct": w, "n": len(members),

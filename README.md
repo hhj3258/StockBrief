@@ -106,7 +106,7 @@ res = build_briefing(kis, out_dir="out")   # out/briefing_YYYYMMDD.md 생성
 |---|---|
 | **[docs/USAGE.md](docs/USAGE.md)** | 설치부터 provider·설정·KIS 연동·스킬까지 단계별 사용법 |
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | 내부 구조·데이터 계약·확장 지점 (수정·기여 전에 읽기) |
-| [examples/](examples/) | `keyless_demo.py`(키 0개) · `kis_account.py`(KIS 계좌 연동) |
+| [examples/](examples/) | `keyless_demo.py`(키 0개) · `kis_account.py`(KIS 계좌) · `telegram_bot.py`(텔레그램) · `github-actions-daily.yml`(매일 cron) |
 | [skills/](skills/) | 판단·회고용 Claude 스킬 |
 
 ## 라이선스

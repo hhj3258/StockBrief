@@ -10,6 +10,7 @@ logs/
 # 실제 보유·점수판 데이터(소비 프로젝트 소유, 패키지엔 합성 예시만)
 holdings*.json
 benchmark*.json
+state*.json
 *_latest.json
 *_real*.json
 

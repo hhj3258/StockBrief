@@ -131,8 +131,11 @@ def portfolio_concentration(tradable, theme_map=None, *, max_position_pct=30.0,
     return {"single": single, "regions": regions, "themes": themes, "flags": flags}
 
 
-def overheat_ratio(tradable, quotes):
-    """포폴 과열도 = (RSI>70 종목 수) / (RSI 있는 종목 수). 반환 (ratio, hot, have)."""
+def overheat_ratio(tradable, quotes, rsi_overheat=70.0):
+    """포폴 과열도 = (RSI>임계 종목 수) / (RSI 있는 종목 수). 반환 (ratio, hot, have).
+
+    rsi_overheat: 과열 판정 RSI 임계(기본 70). AdvisorConfig.thresholds["rsi_overheat"] 로 튜닝.
+    """
     have = 0
     hot = 0
     for h in tradable:
@@ -143,7 +146,7 @@ def overheat_ratio(tradable, quotes):
         if rsi is None:
             continue
         have += 1
-        if rsi > 70:
+        if rsi > rsi_overheat:
             hot += 1
     return (hot / have if have else 0.0), hot, have
 

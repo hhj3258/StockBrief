@@ -1,0 +1,31 @@
+# 예시 GitHub Actions 워크플로 — 매일 아침 브리핑을 텔레그램으로 (서버 불필요).
+#
+# 사용법:
+#   1) 이 파일을 리포의 .github/workflows/daily_brief.yml 로 복사한다.
+#      (examples/ 안에 있으면 실행되지 않는다 — 일부러 비활성 템플릿으로 둠)
+#   2) 리포 Settings > Secrets and variables > Actions 에 시크릿 등록:
+#      TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID  (네이버/KIS 쓰면 그 키도)
+#   3) cron 은 UTC 기준 — 아래는 평일 KST 09:30(=UTC 00:30).
+#
+# ⚠️ 개인 보유는 리포에 커밋하지 말 것. holdings 는 시크릿/외부 저장소에서 주입하거나
+#    examples/telegram_bot.py 처럼 합성/환경변수로 다루세요.
+
+name: daily-brief
+on:
+  schedule:
+    - cron: "30 0 * * 1-5"     # 평일 00:30 UTC = 09:30 KST
+  workflow_dispatch: {}        # 수동 실행 버튼
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install "stockbrief[quotes-kr,quotes-us]"
+      - run: python examples/telegram_bot.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

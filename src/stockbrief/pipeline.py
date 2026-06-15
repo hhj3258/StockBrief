@@ -158,9 +158,11 @@ class Advisor:
                 logger.warning("수급 조회 실패: %s", e)
                 flow = None
 
-        regions = all_regions(tradable, quotes, self.config.regions, cnn_score=cnn, investor=flow)
+        rsi_oh = self.config.thresholds.get("rsi_overheat", 70.0)
+        regions = all_regions(tradable, quotes, self.config.regions,
+                              cnn_score=cnn, investor=flow, rsi_overheat=rsi_oh)
         w, total = lib.weights(tradable)
-        oh = lib.overheat_ratio(tradable, quotes)
+        oh = lib.overheat_ratio(tradable, quotes, rsi_overheat=rsi_oh)
         news = self.collect_news(days=news_days, asof=asof)
 
         return BriefingInputs(holdings=h, tradable=tradable, quotes=quotes, fx=fx,
