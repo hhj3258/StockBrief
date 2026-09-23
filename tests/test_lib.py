@@ -17,6 +17,21 @@ from stockbrief.lib import (
 )
 
 
+def test_avg_fx_blend_and_krw_profit():
+    from stockbrief.lib import blend_avg_fx, implied_avg_fx, krw_profit_pct
+    # 신규 편입 → 오늘 환율 / 매도·불변 → 유지
+    assert blend_avg_fx(0, None, None, 10, 100, 1400) == 1400
+    assert blend_avg_fx(10, 100, 1500, 5, 100, 1300) == 1500
+    assert blend_avg_fx(10, 100, 1500, 10, 100, 1300) == 1500
+    # 10주@$100(1500원) + 10주@$100(1300원) → 평단 $100, 매입환율 1400
+    assert abs(blend_avg_fx(10, 100, 1500, 20, 100, 1300) - 1400) < 1e-9
+    # 앱 원화 매입원가 역산 → 원화 수익률(환차 포함)
+    # 20주@$50, 원화 매입원가 1,500,000원 → 매입환율 1500. 지금 $55(+10%)·환율 1350 → 원화 −1%
+    fx = implied_avg_fx(1_500_000, 20, 50)
+    assert fx == 1500
+    assert round(krw_profit_pct(20 * 55 * 1350, 20, 50, fx), 2) == -1.0
+
+
 def test_backcalc_buy_fill():
     fill = backcalc_buy_fill(10.327575, 211898, 11.421258, 222593)
     assert 323000 < fill < 324000

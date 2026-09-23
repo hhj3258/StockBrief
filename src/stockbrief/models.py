@@ -23,6 +23,11 @@ class Position:
     currency: str = "KRW"
     eval_amount: Optional[float] = None
     profit_pct: Optional[float] = None
+    # 외화 종목 원본값(선택). 증권사 API 가 원통화로만 줄 때 채운다 — 원화 환산은 호출 측이
+    # 매입 환율(avg_fx)로 다시 할 수 있게(환차손익 반영). 원화 종목은 None.
+    avg_price_native: Optional[float] = None   # 주당 평단(원통화, 예: USD)
+    profit_pct_native: Optional[float] = None  # 원통화 기준 수익률(환차 제외)
+    fx_rate: Optional[float] = None            # avg_price_krw·eval_amount 환산에 쓴 오늘 환율
 
     def as_holding_dict(self) -> dict:
         """lib.py·metrics 가 기대하는 holdings.json 항목 형태."""
@@ -34,6 +39,10 @@ class Position:
         if self.market == "US":
             d["ticker"] = self.key
             d["avg_price_krw"] = self.avg_price_krw
+            if self.avg_price_native is not None:
+                d["avg_price_usd"] = self.avg_price_native
+            if self.profit_pct_native is not None:
+                d["profit_pct_usd"] = self.profit_pct_native
         else:
             d["code"] = self.key
             d["avg_price"] = self.avg_price_krw

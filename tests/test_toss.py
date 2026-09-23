@@ -30,10 +30,17 @@ def test_toss_normalization_with_fx():
     assert nv.avg_price_krw == 100 * 1500
     assert nv.eval_amount == 240 * 1500
     assert round(nv.profit_pct, 2) == 20.0
+    # 원본값도 함께(호출 측이 매입 환율로 재환산)
+    assert nv.avg_price_native == 100 and round(nv.profit_pct_native, 2) == 20.0
+    assert nv.fx_rate == 1500.0
+    hd = nv.as_holding_dict()
+    assert hd["avg_price_usd"] == 100 and round(hd["profit_pct_usd"], 2) == 20.0
 
     kr = by["069500"]                     # 한국주 → 그대로
     assert kr.market == "KR" and kr.avg_price_krw == 12000
     assert kr.eval_amount == 130000
+    assert kr.avg_price_native is None and kr.fx_rate is None
+    assert "avg_price_usd" not in kr.as_holding_dict()
 
 
 def test_toss_quote_provider(monkeypatch):

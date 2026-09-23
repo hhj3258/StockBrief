@@ -153,6 +153,10 @@ class TossHoldingsProvider(HoldingsProvider):
                 purchase = _num(mv.get("purchaseAmount"))       # 총 매수금액(원통화)
                 avg_native = (purchase / qty) if (purchase and qty) else None
             rate_pl = _num((it.get("profitLoss") or {}).get("rate"))  # 예: -0.2546 → -25.46%
+            # ⚠️ 토스 API 는 매입 당시 환율·원화 매입원가를 주지 않는다. 그래서 avg_price_krw 는
+            # '평단×오늘 환율', profit_pct 는 '원통화(USD) 기준 수익률'(환차 제외) — 토스 앱의
+            # 원화 수익률과 다르다. 원본값(native·fx_rate)을 함께 넘겨 호출 측이 매입 환율로 재환산.
+            foreign = conv != 1.0
             positions.append(Position(
                 key=it["symbol"], name=it.get("name") or it["symbol"], market=market,
                 region=self.region_map.get(it["symbol"], market),
@@ -161,6 +165,9 @@ class TossHoldingsProvider(HoldingsProvider):
                 currency="KRW" if (cur == "KRW" or conv != 1.0) else cur,
                 eval_amount=(amount * conv) if amount is not None else None,
                 profit_pct=(rate_pl * 100 if rate_pl is not None else None),
+                avg_price_native=avg_native if foreign else None,
+                profit_pct_native=(rate_pl * 100 if (foreign and rate_pl is not None) else None),
+                fx_rate=conv if foreign else None,
             ))
         return Holdings(positions=positions, cash=None)
 

@@ -57,6 +57,41 @@ def backcalc_buy_fill(q_before, avg_before, q_after, avg_after):
     return (q_after * avg_after - q_before * avg_before) / dq
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 외화 종목 매입 환율(avg_fx) — 원화 수익률(환차 포함)
+# ─────────────────────────────────────────────────────────────────────────────
+def blend_avg_fx(q_before, avg_native_before, fx_before, q_after, avg_native_after, fx_now,
+                 eps=1e-9):
+    """매입 환율 가중평균 이월(결정적).
+
+    수량이 늘면 늘어난 원통화 매입액을 오늘 환율(fx_now)로 기존 매입 환율과 섞는다.
+    수량 불변·감소(매도)면 기존 매입 환율 유지. 기존 매입 환율이 없으면(신규 편입) fx_now.
+    avg_native_before 가 없으면 avg_native_after 로 근사.
+    """
+    if fx_before is None or q_before <= eps:
+        return fx_now
+    if q_after - q_before <= eps:
+        return fx_before
+    avg_b = avg_native_before if avg_native_before is not None else avg_native_after
+    cost_before = q_before * avg_b
+    cost_after = q_after * avg_native_after
+    added = cost_after - cost_before
+    if added <= 0 or cost_after <= 0:
+        return fx_before
+    return (cost_before * fx_before + added * fx_now) / cost_after
+
+
+def implied_avg_fx(krw_cost, qty, avg_native):
+    """원화 매입원가(앱의 '평가액 − 평가손익') → 매입 환율 역산."""
+    return krw_cost / (qty * avg_native)
+
+
+def krw_profit_pct(eval_krw, qty, avg_native, avg_fx):
+    """원화 기준 수익률(%) = 원화 평가액 / (수량×원통화평단×매입환율) − 1. 환차손익 포함."""
+    cost = qty * avg_native * avg_fx
+    return (eval_krw / cost - 1) * 100
+
+
 def classify_trade(q_before, q_after, eps=1e-9):
     """수량 변화 → 'buy' / 'sell' / 'unchanged'."""
     if q_after - q_before > eps:
